@@ -215,6 +215,17 @@ uint8_t modbus_get_byte_from_bits(const uint8_t *src, int index, unsigned int nb
 float modbus_get_float(const uint16_t *src);
 void modbus_set_float(float f, uint16_t *dest);
 
+enum {
+    MODBUS_STAGE_BEFORE_SELECT,
+    MODBUS_STAGE_AFTER_SELECT,
+    MODBUS_STAGE_BEFORE_SEND,
+    MODBUS_STAGE_AFTER_SEND,
+    MODBUS_STAGE_BEFORE_RECV,
+    MODBUS_STAGE_AFTER_RECV,
+};
+
+void modbus_set_cb_stage(modbus_t *ctx, void (*cb)(modbus_t *ctx, int stage));
+
 #include "modbus-tcp.h"
 #include "modbus-rtu.h"
 

@@ -175,7 +175,13 @@ static int send_msg(modbus_t *ctx, uint8_t *msg, int msg_length)
     /* In recovery mode, the write command will be issued until to be
        successful! Disabled by default. */
     do {
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_BEFORE_SEND);
+        }
         rc = ctx->backend->send(ctx, msg, msg_length);
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_AFTER_SEND);
+        }
         if (rc == -1) {
             _error_print(ctx, NULL);
             if (ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK) {
@@ -365,7 +371,13 @@ static int receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
     }
 
     while (length_to_read != 0) {
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_BEFORE_SELECT);
+        }
         rc = ctx->backend->select(ctx, &rfds, p_tv, length_to_read);
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_AFTER_SELECT);
+        }
         if (rc == -1) {
             _error_print(ctx, "select");
             if (ctx->error_recovery & MODBUS_ERROR_RECOVERY_LINK) {
@@ -381,8 +393,13 @@ static int receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
             }
             return -1;
         }
-
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_BEFORE_RECV);
+        }
         rc = ctx->backend->recv(ctx, msg + msg_length, length_to_read);
+        if (ctx->cb_stage) {
+            (*ctx->cb_stage)(ctx, MODBUS_STAGE_AFTER_RECV);
+        }
         if (rc == 0) {
             errno = ECONNRESET;
             rc = -1;
@@ -1392,6 +1409,8 @@ void _modbus_init_common(modbus_t *ctx)
 
     ctx->byte_timeout.tv_sec = 0;
     ctx->byte_timeout.tv_usec = _BYTE_TIMEOUT;
+
+    ctx->cb_stage = NULL;
 }
 
 /* Define the slave number */
@@ -1607,3 +1626,8 @@ size_t strlcpy(char *dest, const char *src, size_t dest_size)
     return (s - src - 1); /* count does not include NUL */
 }
 #endif
+
+void modbus_set_cb_stage(modbus_t *ctx, void (*cb)(modbus_t *ctx, int stage))
+{
+    ctx->cb_stage = cb;
+}
