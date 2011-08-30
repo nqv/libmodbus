@@ -291,13 +291,21 @@ ssize_t _modbus_rtu_send(modbus_t *ctx, const uint8_t *req, int req_length)
         usleep(_MODBUS_RTU_TIME_BETWEEN_RTS_SWITCH);
 
         size = write(ctx->s, req, req_length);
+        if (size > 0) {
+            fsync(ctx->s);
+        }
 
         usleep(_MODBUS_RTU_TIME_BETWEEN_RTS_SWITCH);
         _modbus_rtu_ioctl_rts(ctx->s, ctx_rtu->rts != MODBUS_RTU_RTS_UP);
 
         return size;
     } else {
-        return write(ctx->s, req, req_length);
+        ssize_t size;
+        size = write(ctx->s, req, req_length);
+        if (size > 0) {
+            fsync(ctx->s);
+        }
+        return size;
     }
 #endif
 }
